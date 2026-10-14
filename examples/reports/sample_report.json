@@ -1,0 +1,1919 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "spark-telemetry-analyzer",
+    "version": "1.0.0"
+  },
+  "generated_at": "2026-10-14T06:49:26+00:00",
+  "application": {
+    "id": "application_1760000000000_0042",
+    "name": "nightly-customer-etl",
+    "user": "etl",
+    "spark_version": "3.5.1",
+    "started_at": "2025-10-09T08:53:20.000+00:00",
+    "ended_at": "2025-10-09T09:02:33.462+00:00",
+    "duration_ms": 553462,
+    "completed": true
+  },
+  "health_score": 0,
+  "grade": "F",
+  "summary": {
+    "jobs": 7,
+    "jobs_failed": 1,
+    "stages": 9,
+    "stage_attempts": 10,
+    "stages_failed": 2,
+    "tasks": 4916,
+    "tasks_succeeded": 4890,
+    "tasks_failed": 26,
+    "tasks_killed": 0,
+    "executors": 10,
+    "executors_lost": 2,
+    "peak_cores": 32,
+    "executor_run_ms": 4255230,
+    "cpu_ms": 3616945,
+    "gc_ms": 478582,
+    "gc_ratio": 0.1125,
+    "utilization": 0.242,
+    "input_bytes": 61240365495,
+    "output_bytes": 0,
+    "shuffle_read_bytes": 24107603881,
+    "shuffle_write_bytes": 15518366138,
+    "memory_spilled_bytes": 9663676416,
+    "disk_spilled_bytes": 2202009600,
+    "result_bytes": 1620442736
+  },
+  "findings": [
+    {
+      "rule_id": "DATA_SKEW",
+      "severity": "critical",
+      "title": "Data skew in stage 1",
+      "message": "In stage 1 (attempt 0, 'shuffle join') the largest task read 2.52 GiB of shuffle read data vs a median of 61.10 MiB (42.2x). The slowest task took 52.3 s vs 3.1 s median, so up to 49.3 s of stage time is spent waiting on it.",
+      "scope": "stage",
+      "scope_id": "1.0",
+      "evidence": {
+        "tasks": 200,
+        "data_kind": "shuffle read",
+        "data_ratio": 42.23,
+        "data_max_bytes": 2705719207,
+        "data_median_bytes": 64069500,
+        "duration_ms": {
+          "min": 2422,
+          "p50": 3079,
+          "p75": 3314,
+          "p95": 3578,
+          "max": 52346
+        },
+        "duration_ratio": 17.0,
+        "slowest_tasks": [
+          {
+            "task_id": 201,
+            "index": 1,
+            "attempt": 0,
+            "executor_id": "1",
+            "host": "worker-2.cluster.internal",
+            "duration_ms": 52346,
+            "shuffle_read_bytes": 2705719207,
+            "input_bytes": 0,
+            "disk_spilled_bytes": 734003200
+          },
+          {
+            "task_id": 200,
+            "index": 0,
+            "attempt": 0,
+            "executor_id": "1",
+            "host": "worker-2.cluster.internal",
+            "duration_ms": 51244,
+            "shuffle_read_bytes": 2596359038,
+            "input_bytes": 0,
+            "disk_spilled_bytes": 734003200
+          },
+          {
+            "task_id": 202,
+            "index": 2,
+            "attempt": 0,
+            "executor_id": "1",
+            "host": "worker-2.cluster.internal",
+            "duration_ms": 49672,
+            "shuffle_read_bytes": 2517583820,
+            "input_bytes": 0,
+            "disk_spilled_bytes": 734003200
+          }
+        ]
+      },
+      "recommendation": "Enable Adaptive Query Execution skew-join handling (spark.sql.adaptive.enabled and spark.sql.adaptive.skewJoin.enabled), salt hot keys, pre-aggregate before the shuffle, or broadcast the smaller side of the join."
+    },
+    {
+      "rule_id": "GC_PRESSURE",
+      "severity": "critical",
+      "title": "High garbage-collection time in stage 2",
+      "message": "JVM GC consumed 25.0% of executor run time in stage 2 (attempt 0, 'sessionize') (5m 31s of 22m 05s).",
+      "scope": "stage",
+      "scope_id": "2.0",
+      "evidence": {
+        "gc_ms": 331252,
+        "run_ms": 1325309,
+        "gc_ratio": 0.2499
+      },
+      "recommendation": "Give executors more memory or fewer cores, prefer the built-in DataFrame API over RDD/UDF object-heavy code, use Kryo serialization, and consider G1GC (-XX:+UseG1GC)."
+    },
+    {
+      "rule_id": "JOB_FAILURE",
+      "severity": "critical",
+      "title": "Job 6 failed",
+      "message": "Job aborted due to stage failure: Task 3 in stage 7.0 failed 4 times, most recent failure: java.lang.ArithmeticException: / by zero",
+      "scope": "job",
+      "scope_id": "6",
+      "evidence": {
+        "job_id": 6,
+        "stage_ids": [
+          8
+        ],
+        "reason": "Job aborted due to stage failure: Task 3 in stage 7.0 failed 4 times, most recent failure: java.lang.ArithmeticException: / by zero"
+      },
+      "recommendation": "Inspect the failing stage's task errors and executor logs; fix the root cause before tuning."
+    },
+    {
+      "rule_id": "LOW_PARALLELISM",
+      "severity": "critical",
+      "title": "Stage 4 cannot use the whole cluster",
+      "message": "stage 4 (attempt 0, 'single partition sort') ran only 1 task(s) for 5m 30s while up to 32 cores were available.",
+      "scope": "stage",
+      "scope_id": "4.0",
+      "evidence": {
+        "tasks": 1,
+        "available_cores": 32,
+        "duration_ms": 330025
+      },
+      "recommendation": "Increase partitions (repartition, spark.sql.shuffle.partitions, spark.default.parallelism), avoid single-partition operations such as global sorts or coalesce(1), and split large non-splittable files."
+    },
+    {
+      "rule_id": "MEMORY_ERRORS",
+      "severity": "critical",
+      "title": "Out-of-memory or container memory-limit kills detected",
+      "message": "14 memory-related failure event(s), e.g. ExecutorLostFailure: Container killed by YARN for exceeding memory limits. 8.4 GB of 8 GB physical memory used. Consider boosting spark.exe\u2026; Container killed by YARN for exceeding memory limits. 8.4 GB of 8 GB physical memory used. Consider boosting spark.executor.memoryOverhead.",
+      "scope": "application",
+      "scope_id": null,
+      "evidence": {
+        "occurrences": [
+          {
+            "reason": "ExecutorLostFailure: Container killed by YARN for exceeding memory limits. 8.4 GB of 8 GB physical memory used. Consider boosting spark.exe\u2026",
+            "count": 12
+          },
+          {
+            "reason": "Container killed by YARN for exceeding memory limits. 8.4 GB of 8 GB physical memory used. Consider boosting spark.executor.memoryOverhead.",
+            "count": 2
+          }
+        ]
+      },
+      "recommendation": "Raise spark.executor.memory and/or spark.executor.memoryOverhead (YARN/K8s kills usually mean off-heap overhead is too small), reduce partition size (more partitions), avoid collecting large results, and check for skewed keys."
+    },
+    {
+      "rule_id": "TASK_FAILURES",
+      "severity": "critical",
+      "title": "12 failed task(s) in stage 5",
+      "message": "9.7% of tasks in stage 5 (attempt 0, 'extract features') failed. Most common: ExecutorLostFailure: Container killed by YARN for exceeding memory limits. 8.4 GB of 8 GB physical memory used. Consider boosting spark.exec\u2026 (x12)",
+      "scope": "stage",
+      "scope_id": "5.0",
+      "evidence": {
+        "failed_tasks": 12,
+        "observed_tasks": 124,
+        "failure_ratio": 0.0968,
+        "top_reasons": [
+          {
+            "reason": "ExecutorLostFailure: Container killed by YARN for exceeding memory limits. 8.4 GB of 8 GB physical memory used. Consider boosting spark.exec\u2026",
+            "count": 12
+          }
+        ]
+      },
+      "recommendation": "Failed attempts re-run work. Review the top failure reasons; if they are transient (executor loss, fetch failures) address cluster stability, otherwise fix the code/data issue."
+    },
+    {
+      "rule_id": "TASK_FAILURES",
+      "severity": "critical",
+      "title": "10 failed task(s) in stage 7",
+      "message": "16.7% of tasks in stage 7 (attempt 0, 'reduce side') failed. Most common: FetchFailed (x10)",
+      "scope": "stage",
+      "scope_id": "7.0",
+      "evidence": {
+        "failed_tasks": 10,
+        "observed_tasks": 60,
+        "failure_ratio": 0.1667,
+        "top_reasons": [
+          {
+            "reason": "FetchFailed",
+            "count": 10
+          }
+        ]
+      },
+      "recommendation": "Failed attempts re-run work. Review the top failure reasons; if they are transient (executor loss, fetch failures) address cluster stability, otherwise fix the code/data issue."
+    },
+    {
+      "rule_id": "TASK_FAILURES",
+      "severity": "critical",
+      "title": "4 failed task(s) in stage 8",
+      "message": "36.4% of tasks in stage 8 (attempt 0, 'divide by zero') failed. Most common: java.lang.ArithmeticException: / by zero (x4)",
+      "scope": "stage",
+      "scope_id": "8.0",
+      "evidence": {
+        "failed_tasks": 4,
+        "observed_tasks": 11,
+        "failure_ratio": 0.3636,
+        "top_reasons": [
+          {
+            "reason": "java.lang.ArithmeticException: / by zero",
+            "count": 4
+          }
+        ]
+      },
+      "recommendation": "Failed attempts re-run work. Review the top failure reasons; if they are transient (executor loss, fetch failures) address cluster stability, otherwise fix the code/data issue."
+    },
+    {
+      "rule_id": "DISK_SPILL",
+      "severity": "warning",
+      "title": "Spill to disk in stage 1",
+      "message": "stage 1 (attempt 0, 'shuffle join') spilled 2.05 GiB to disk (9.00 GiB in-memory size). Spilling means execution memory was too small for the working set and adds heavy disk I/O.",
+      "scope": "stage",
+      "scope_id": "1.0",
+      "evidence": {
+        "disk_spilled_bytes": 2202009600,
+        "memory_spilled_bytes": 9663676416,
+        "tasks": 200
+      },
+      "recommendation": "Increase the number of shuffle partitions (smaller tasks), raise spark.executor.memory or spark.memory.fraction, reduce executor cores per executor, or filter/aggregate earlier."
+    },
+    {
+      "rule_id": "EXECUTOR_LOSS",
+      "severity": "warning",
+      "title": "2 executor(s) were lost unexpectedly",
+      "message": "Executors disappeared for reasons other than a normal scale-down: Container killed by YARN for exceeding memory limits. 8.4 GB of 8 GB physical memory used. Consider boosting spark.exec\u2026 (x2)",
+      "scope": "application",
+      "scope_id": null,
+      "evidence": {
+        "lost_executors": 2,
+        "total_executors": 10,
+        "reasons": [
+          {
+            "reason": "Container killed by YARN for exceeding memory limits. 8.4 GB of 8 GB physical memory used. Consider boosting spark.exec\u2026",
+            "count": 2
+          }
+        ]
+      },
+      "recommendation": "Look for OOM kills, node preemption/spot reclamation, or failing disks. Cached data and shuffle output on lost executors must be recomputed."
+    },
+    {
+      "rule_id": "GC_PRESSURE",
+      "severity": "warning",
+      "title": "High garbage-collection time in stage 4",
+      "message": "JVM GC consumed 13.6% of executor run time in stage 4 (attempt 0, 'single partition sort') (45.0 s of 5m 30s).",
+      "scope": "stage",
+      "scope_id": "4.0",
+      "evidence": {
+        "gc_ms": 45000,
+        "run_ms": 330000,
+        "gc_ratio": 0.1364
+      },
+      "recommendation": "Give executors more memory or fewer cores, prefer the built-in DataFrame API over RDD/UDF object-heavy code, use Kryo serialization, and consider G1GC (-XX:+UseG1GC)."
+    },
+    {
+      "rule_id": "LARGE_RESULT",
+      "severity": "warning",
+      "title": "Large result returned to the driver in stage 4",
+      "message": "stage 4 (attempt 0, 'single partition sort') sent 1.50 GiB of task results to the driver (collect/toPandas/take?).",
+      "scope": "stage",
+      "scope_id": "4.0",
+      "evidence": {
+        "result_bytes": 1610612736
+      },
+      "recommendation": "Write results to storage instead of collecting them; if collecting is required, aggregate or limit first and size spark.driver.memory / spark.driver.maxResultSize accordingly."
+    },
+    {
+      "rule_id": "LOW_UTILIZATION",
+      "severity": "warning",
+      "title": "Cluster cores were mostly idle",
+      "message": "Tasks kept only 24.2% of the 4h 53m of provisioned core-time busy (dynamic allocation disabled).",
+      "scope": "application",
+      "scope_id": null,
+      "evidence": {
+        "utilization": 0.242,
+        "core_ms": 17582784,
+        "busy_ms": 4255230,
+        "dynamic_allocation": false
+      },
+      "recommendation": "Right-size the cluster or enable dynamic allocation (spark.dynamicAllocation.enabled=true with shuffle tracking) so executors are released while the driver or a single-threaded stage is working."
+    },
+    {
+      "rule_id": "SCHEDULING_OVERHEAD",
+      "severity": "warning",
+      "title": "Scheduler / launch overhead in stage 3",
+      "message": "About 38.2% of task wall time in stage 3 (attempt 0, 'scan many small files') is not spent running, deserializing or serializing (scheduler delay, result fetch, launch latency).",
+      "scope": "stage",
+      "scope_id": "3.0",
+      "evidence": {
+        "overhead_ratio": 0.3824,
+        "task_wall_ms": 230119,
+        "run_ms": 118119
+      },
+      "recommendation": "Use fewer, larger tasks, check driver CPU/GC and network latency between driver and executors, and avoid very large task results."
+    },
+    {
+      "rule_id": "SERIALIZATION_OVERHEAD",
+      "severity": "warning",
+      "title": "Task deserialization overhead in stage 2",
+      "message": "21.4% of task time in stage 2 (attempt 0, 'sessionize') is spent deserializing the task closure (6m 00s).",
+      "scope": "stage",
+      "scope_id": "2.0",
+      "evidence": {
+        "deserialize_ms": 360000,
+        "run_ms": 1325309,
+        "ratio": 0.2136
+      },
+      "recommendation": "Large closures are shipped with every task: broadcast big lookup objects, avoid capturing large driver-side collections, and use fewer, larger tasks."
+    },
+    {
+      "rule_id": "SMALL_TASKS",
+      "severity": "warning",
+      "title": "Too many tiny tasks in stage 3",
+      "message": "stage 3 (attempt 0, 'scan many small files') ran 4,000 tasks with a median duration of 58 ms. Task scheduling and serialization overhead likely dominates useful work.",
+      "scope": "stage",
+      "scope_id": "3.0",
+      "evidence": {
+        "tasks": 4000,
+        "median_task_ms": 58
+      },
+      "recommendation": "Reduce partition counts (coalesce, lower spark.sql.shuffle.partitions), enable AQE partition coalescing (spark.sql.adaptive.coalescePartitions.enabled), or compact small input files."
+    },
+    {
+      "rule_id": "STAGE_RETRY",
+      "severity": "warning",
+      "title": "Stage 7 was retried 1 time(s)",
+      "message": "Re-running a stage wastes compute and usually follows lost executors or shuffle fetch failures. 10 FetchFailed task(s) were observed.",
+      "scope": "stage",
+      "scope_id": "7",
+      "evidence": {
+        "attempts": 2,
+        "fetch_failed_tasks": 10
+      },
+      "recommendation": "Check for lost executors / node preemption, enable the external shuffle service or shuffle tracking, and consider raising spark.executor.memoryOverhead."
+    },
+    {
+      "rule_id": "STRAGGLER_TASKS",
+      "severity": "warning",
+      "title": "Straggler tasks in stage 2",
+      "message": "In stage 2 (attempt 0, 'sessionize') the slowest task took 1m 14s vs a median of 7.7 s (9.6x) although input sizes are balanced.",
+      "scope": "stage",
+      "scope_id": "2.0",
+      "evidence": {
+        "duration_ms": {
+          "min": 6650,
+          "p50": 7722,
+          "p75": 8484,
+          "p95": 8934,
+          "max": 73931
+        },
+        "ratio": 9.57,
+        "slowest_tasks": [
+          {
+            "task_id": 410,
+            "index": 10,
+            "attempt": 0,
+            "executor_id": "3",
+            "host": "worker-4.cluster.internal",
+            "duration_ms": 73931,
+            "shuffle_read_bytes": 0,
+            "input_bytes": 97367166,
+            "disk_spilled_bytes": 0
+          },
+          {
+            "task_id": 411,
+            "index": 11,
+            "attempt": 0,
+            "executor_id": "3",
+            "host": "worker-4.cluster.internal",
+            "duration_ms": 66539,
+            "shuffle_read_bytes": 0,
+            "input_bytes": 100036750,
+            "disk_spilled_bytes": 0
+          },
+          {
+            "task_id": 559,
+            "index": 159,
+            "attempt": 0,
+            "executor_id": "2",
+            "host": "worker-3.cluster.internal",
+            "duration_ms": 9010,
+            "shuffle_read_bytes": 0,
+            "input_bytes": 102866510,
+            "disk_spilled_bytes": 0
+          }
+        ]
+      },
+      "recommendation": "Enable speculative execution (spark.speculation=true), check the executors/hosts that ran the slowest tasks for noisy neighbours or bad disks, and look at GC time in those tasks."
+    },
+    {
+      "rule_id": "CONFIG_ADVISORY",
+      "severity": "info",
+      "title": "Adaptive Query Execution is disabled",
+      "message": "spark.sql.adaptive.enabled=false. AQE coalesces shuffle partitions, switches join strategies and splits skewed partitions at runtime.",
+      "scope": "application",
+      "scope_id": null,
+      "evidence": {
+        "spark.sql.adaptive.enabled": "false"
+      },
+      "recommendation": "Set spark.sql.adaptive.enabled=true (default since Spark 3.2)."
+    },
+    {
+      "rule_id": "CONFIG_ADVISORY",
+      "severity": "info",
+      "title": "Java serialization used with significant shuffle volume",
+      "message": "The application shuffled 14.45 GiB using the default JavaSerializer, which is slower and larger than Kryo for RDD workloads.",
+      "scope": "application",
+      "scope_id": null,
+      "evidence": {
+        "spark.serializer": "default",
+        "shuffle_write_bytes": 15518366138
+      },
+      "recommendation": "Set spark.serializer=org.apache.spark.serializer.KryoSerializer (DataFrame shuffles already use Tungsten and are unaffected)."
+    }
+  ],
+  "finding_counts": {
+    "critical": 8,
+    "warning": 10,
+    "info": 2
+  },
+  "jobs": [
+    {
+      "job_id": 3,
+      "status": "SUCCEEDED",
+      "duration_ms": 330030,
+      "stage_ids": [
+        4
+      ],
+      "description": "global sort + collect",
+      "sql_execution_id": null,
+      "failure_reason": null
+    },
+    {
+      "job_id": 0,
+      "status": "SUCCEEDED",
+      "duration_ms": 79673,
+      "stage_ids": [
+        0,
+        1
+      ],
+      "description": "orders JOIN customers (skewed on customer_id)",
+      "sql_execution_id": 0,
+      "failure_reason": null
+    },
+    {
+      "job_id": 1,
+      "status": "SUCCEEDED",
+      "duration_ms": 73943,
+      "stage_ids": [
+        2
+      ],
+      "description": "sessionization with large object graphs",
+      "sql_execution_id": 1,
+      "failure_reason": null
+    },
+    {
+      "job_id": 4,
+      "status": "SUCCEEDED",
+      "duration_ms": 21584,
+      "stage_ids": [
+        5
+      ],
+      "description": "feature extraction",
+      "sql_execution_id": 3,
+      "failure_reason": null
+    },
+    {
+      "job_id": 5,
+      "status": "SUCCEEDED",
+      "duration_ms": 12480,
+      "stage_ids": [
+        6,
+        7
+      ],
+      "description": "rollup after executor loss",
+      "sql_execution_id": 4,
+      "failure_reason": null
+    },
+    {
+      "job_id": 2,
+      "status": "SUCCEEDED",
+      "duration_ms": 7674,
+      "stage_ids": [
+        3
+      ],
+      "description": "tiny file compaction check",
+      "sql_execution_id": 2,
+      "failure_reason": null
+    },
+    {
+      "job_id": 6,
+      "status": "FAILED",
+      "duration_ms": 1598,
+      "stage_ids": [
+        8
+      ],
+      "description": "data quality check",
+      "sql_execution_id": null,
+      "failure_reason": "Job aborted due to stage failure: Task 3 in stage 7.0 failed 4 times, most recent failure: java.lang.ArithmeticException: / by zero"
+    }
+  ],
+  "stages": [
+    {
+      "key": "4.0",
+      "stage_id": 4,
+      "attempt_id": 0,
+      "name": "single partition sort",
+      "details": "org.apache.spark.sql.Dataset.collect(Dataset.scala:3000)",
+      "status": "COMPLETE",
+      "job_ids": [
+        3
+      ],
+      "submitted_at": "2025-10-09T08:56:12.881+00:00",
+      "duration_ms": 330025,
+      "failure_reason": null,
+      "tasks": {
+        "declared": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "killed": 0,
+        "speculative": 0
+      },
+      "task_duration_ms": {
+        "min": 330019,
+        "p50": 330019,
+        "p75": 330019,
+        "p95": 330019,
+        "max": 330019
+      },
+      "shuffle_read_per_task_bytes": {
+        "min": 0,
+        "p50": 0,
+        "p75": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "input_per_task_bytes": {
+        "min": 1288490188,
+        "p50": 1288490188,
+        "p75": 1288490188,
+        "p95": 1288490188,
+        "max": 1288490188
+      },
+      "totals": {
+        "executor_run_ms": 330000,
+        "cpu_ms": 280500,
+        "gc_ms": 45000,
+        "gc_ratio": 0.1364,
+        "deserialize_ms": 8,
+        "input_bytes": 1288490188,
+        "output_bytes": 0,
+        "shuffle_read_bytes": 0,
+        "shuffle_write_bytes": 0,
+        "fetch_wait_ms": 0,
+        "memory_spilled_bytes": 0,
+        "disk_spilled_bytes": 0,
+        "result_bytes": 1610612736
+      },
+      "slowest_tasks": [
+        {
+          "task_id": 4600,
+          "index": 0,
+          "attempt": 0,
+          "executor_id": "1",
+          "host": "worker-2.cluster.internal",
+          "duration_ms": 330019,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 1288490188,
+          "disk_spilled_bytes": 0
+        }
+      ],
+      "failure_reasons": []
+    },
+    {
+      "key": "2.0",
+      "stage_id": 2,
+      "attempt_id": 0,
+      "name": "sessionize",
+      "details": "org.apache.spark.sql.Dataset.collect(Dataset.scala:3000)",
+      "status": "COMPLETE",
+      "job_ids": [
+        1
+      ],
+      "submitted_at": "2025-10-09T08:54:46.348+00:00",
+      "duration_ms": 73938,
+      "failure_reason": null,
+      "tasks": {
+        "declared": 200,
+        "succeeded": 200,
+        "failed": 0,
+        "killed": 0,
+        "speculative": 0
+      },
+      "task_duration_ms": {
+        "min": 6650,
+        "p50": 7722,
+        "p75": 8484,
+        "p95": 8934,
+        "max": 73931
+      },
+      "shuffle_read_per_task_bytes": {
+        "min": 0,
+        "p50": 0,
+        "p75": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "input_per_task_bytes": {
+        "min": 95682991,
+        "p50": 101180834,
+        "p75": 103321342,
+        "p95": 105157790,
+        "max": 105659870
+      },
+      "totals": {
+        "executor_run_ms": 1325309,
+        "cpu_ms": 1126512,
+        "gc_ms": 331252,
+        "gc_ratio": 0.2499,
+        "deserialize_ms": 360000,
+        "input_bytes": 20172225686,
+        "output_bytes": 0,
+        "shuffle_read_bytes": 0,
+        "shuffle_write_bytes": 0,
+        "fetch_wait_ms": 0,
+        "memory_spilled_bytes": 0,
+        "disk_spilled_bytes": 0,
+        "result_bytes": 400000
+      },
+      "slowest_tasks": [
+        {
+          "task_id": 410,
+          "index": 10,
+          "attempt": 0,
+          "executor_id": "3",
+          "host": "worker-4.cluster.internal",
+          "duration_ms": 73931,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 97367166,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 411,
+          "index": 11,
+          "attempt": 0,
+          "executor_id": "3",
+          "host": "worker-4.cluster.internal",
+          "duration_ms": 66539,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 100036750,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 559,
+          "index": 159,
+          "attempt": 0,
+          "executor_id": "2",
+          "host": "worker-3.cluster.internal",
+          "duration_ms": 9010,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 102866510,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 523,
+          "index": 123,
+          "attempt": 0,
+          "executor_id": "2",
+          "host": "worker-3.cluster.internal",
+          "duration_ms": 9006,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 98393895,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 488,
+          "index": 88,
+          "attempt": 0,
+          "executor_id": "8",
+          "host": "worker-1.cluster.internal",
+          "duration_ms": 8982,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 101208407,
+          "disk_spilled_bytes": 0
+        }
+      ],
+      "failure_reasons": []
+    },
+    {
+      "key": "1.0",
+      "stage_id": 1,
+      "attempt_id": 0,
+      "name": "shuffle join",
+      "details": "org.apache.spark.sql.Dataset.collect(Dataset.scala:3000)",
+      "status": "COMPLETE",
+      "job_ids": [
+        0
+      ],
+      "submitted_at": "2025-10-09T08:53:51.314+00:00",
+      "duration_ms": 52354,
+      "failure_reason": null,
+      "tasks": {
+        "declared": 200,
+        "succeeded": 200,
+        "failed": 0,
+        "killed": 0,
+        "speculative": 0
+      },
+      "task_duration_ms": {
+        "min": 2422,
+        "p50": 3079,
+        "p75": 3314,
+        "p95": 3578,
+        "max": 52346
+      },
+      "shuffle_read_per_task_bytes": {
+        "min": 50869125,
+        "p50": 64069500,
+        "p75": 70471654,
+        "p95": 74782067,
+        "max": 2705719207
+      },
+      "input_per_task_bytes": {
+        "min": 0,
+        "p50": 0,
+        "p75": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "totals": {
+        "executor_run_ms": 748394,
+        "cpu_ms": 636134,
+        "gc_ms": 44730,
+        "gc_ratio": 0.0598,
+        "deserialize_ms": 1600,
+        "input_bytes": 0,
+        "output_bytes": 0,
+        "shuffle_read_bytes": 20382152037,
+        "shuffle_write_bytes": 0,
+        "fetch_wait_ms": 7110,
+        "memory_spilled_bytes": 9663676416,
+        "disk_spilled_bytes": 2202009600,
+        "result_bytes": 400000
+      },
+      "slowest_tasks": [
+        {
+          "task_id": 201,
+          "index": 1,
+          "attempt": 0,
+          "executor_id": "1",
+          "host": "worker-2.cluster.internal",
+          "duration_ms": 52346,
+          "shuffle_read_bytes": 2705719207,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 734003200
+        },
+        {
+          "task_id": 200,
+          "index": 0,
+          "attempt": 0,
+          "executor_id": "1",
+          "host": "worker-2.cluster.internal",
+          "duration_ms": 51244,
+          "shuffle_read_bytes": 2596359038,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 734003200
+        },
+        {
+          "task_id": 202,
+          "index": 2,
+          "attempt": 0,
+          "executor_id": "1",
+          "host": "worker-2.cluster.internal",
+          "duration_ms": 49672,
+          "shuffle_read_bytes": 2517583820,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 734003200
+        },
+        {
+          "task_id": 289,
+          "index": 89,
+          "attempt": 0,
+          "executor_id": "7",
+          "host": "worker-4.cluster.internal",
+          "duration_ms": 3610,
+          "shuffle_read_bytes": 57761372,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 227,
+          "index": 27,
+          "attempt": 0,
+          "executor_id": "7",
+          "host": "worker-4.cluster.internal",
+          "duration_ms": 3609,
+          "shuffle_read_bytes": 73306280,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        }
+      ],
+      "failure_reasons": []
+    },
+    {
+      "key": "0.0",
+      "stage_id": 0,
+      "attempt_id": 0,
+      "name": "scan orders",
+      "details": "org.apache.spark.sql.Dataset.collect(Dataset.scala:3000)",
+      "status": "COMPLETE",
+      "job_ids": [
+        0
+      ],
+      "submitted_at": "2025-10-09T08:53:24.000+00:00",
+      "duration_ms": 27314,
+      "failure_reason": null,
+      "tasks": {
+        "declared": 200,
+        "succeeded": 200,
+        "failed": 0,
+        "killed": 0,
+        "speculative": 0
+      },
+      "task_duration_ms": {
+        "min": 3234,
+        "p50": 4057,
+        "p75": 4444,
+        "p95": 4763,
+        "max": 4817
+      },
+      "shuffle_read_per_task_bytes": {
+        "min": 0,
+        "p50": 0,
+        "p75": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "input_per_task_bytes": {
+        "min": 107395976,
+        "p50": 132150614,
+        "p75": 147013359,
+        "p95": 157877251,
+        "max": 161056325
+      },
+      "totals": {
+        "executor_run_ms": 805981,
+        "cpu_ms": 685083,
+        "gc_ms": 24000,
+        "gc_ratio": 0.0298,
+        "deserialize_ms": 1600,
+        "input_bytes": 26575635094,
+        "output_bytes": 0,
+        "shuffle_read_bytes": 0,
+        "shuffle_write_bytes": 13483356586,
+        "fetch_wait_ms": 0,
+        "memory_spilled_bytes": 0,
+        "disk_spilled_bytes": 0,
+        "result_bytes": 400000
+      },
+      "slowest_tasks": [
+        {
+          "task_id": 66,
+          "index": 66,
+          "attempt": 0,
+          "executor_id": "5",
+          "host": "worker-2.cluster.internal",
+          "duration_ms": 4817,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 152258071,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 85,
+          "index": 85,
+          "attempt": 0,
+          "executor_id": "1",
+          "host": "worker-2.cluster.internal",
+          "duration_ms": 4812,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 111307337,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 32,
+          "index": 32,
+          "attempt": 0,
+          "executor_id": "2",
+          "host": "worker-3.cluster.internal",
+          "duration_ms": 4812,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 135780792,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 50,
+          "index": 50,
+          "attempt": 0,
+          "executor_id": "5",
+          "host": "worker-2.cluster.internal",
+          "duration_ms": 4811,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 142264244,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 20,
+          "index": 20,
+          "attempt": 0,
+          "executor_id": "6",
+          "host": "worker-3.cluster.internal",
+          "duration_ms": 4802,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 141733907,
+          "disk_spilled_bytes": 0
+        }
+      ],
+      "failure_reasons": []
+    },
+    {
+      "key": "5.0",
+      "stage_id": 5,
+      "attempt_id": 0,
+      "name": "extract features",
+      "details": "org.apache.spark.sql.Dataset.collect(Dataset.scala:3000)",
+      "status": "COMPLETE",
+      "job_ids": [
+        4
+      ],
+      "submitted_at": "2025-10-09T09:01:46.208+00:00",
+      "duration_ms": 21579,
+      "failure_reason": null,
+      "tasks": {
+        "declared": 124,
+        "succeeded": 112,
+        "failed": 12,
+        "killed": 0,
+        "speculative": 0
+      },
+      "task_duration_ms": {
+        "min": 4030,
+        "p50": 4996,
+        "p75": 5557,
+        "p95": 5928,
+        "max": 6002
+      },
+      "shuffle_read_per_task_bytes": {
+        "min": 0,
+        "p50": 0,
+        "p75": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "input_per_task_bytes": {
+        "min": 84029565,
+        "p50": 103324436,
+        "p75": 114423168,
+        "p95": 123794149,
+        "max": 125623460
+      },
+      "totals": {
+        "executor_run_ms": 593198,
+        "cpu_ms": 504218,
+        "gc_ms": 33600,
+        "gc_ratio": 0.0566,
+        "deserialize_ms": 992,
+        "input_bytes": 12942227982,
+        "output_bytes": 0,
+        "shuffle_read_bytes": 0,
+        "shuffle_write_bytes": 0,
+        "fetch_wait_ms": 0,
+        "memory_spilled_bytes": 0,
+        "disk_spilled_bytes": 0,
+        "result_bytes": 248000
+      },
+      "slowest_tasks": [
+        {
+          "task_id": 4697,
+          "index": 96,
+          "attempt": 0,
+          "executor_id": "7",
+          "host": "worker-4.cluster.internal",
+          "duration_ms": 6002,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 99204348,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4630,
+          "index": 29,
+          "attempt": 0,
+          "executor_id": "8",
+          "host": "worker-1.cluster.internal",
+          "duration_ms": 5993,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 89129975,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4695,
+          "index": 94,
+          "attempt": 0,
+          "executor_id": "1",
+          "host": "worker-2.cluster.internal",
+          "duration_ms": 5986,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 104637394,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4699,
+          "index": 98,
+          "attempt": 0,
+          "executor_id": "3",
+          "host": "worker-4.cluster.internal",
+          "duration_ms": 5983,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 121814326,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4620,
+          "index": 19,
+          "attempt": 0,
+          "executor_id": "5",
+          "host": "worker-2.cluster.internal",
+          "duration_ms": 5979,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 110591111,
+          "disk_spilled_bytes": 0
+        }
+      ],
+      "failure_reasons": [
+        {
+          "reason": "ExecutorLostFailure: Container killed by YARN for exceeding memory limits. 8.4 GB of 8 GB physical memory used. Consider boosting spark.exec\u2026",
+          "count": 12
+        }
+      ]
+    },
+    {
+      "key": "3.0",
+      "stage_id": 3,
+      "attempt_id": 0,
+      "name": "scan many small files",
+      "details": "org.apache.spark.sql.Dataset.collect(Dataset.scala:3000)",
+      "status": "COMPLETE",
+      "job_ids": [
+        2
+      ],
+      "submitted_at": "2025-10-09T08:56:02.911+00:00",
+      "duration_ms": 7669,
+      "failure_reason": null,
+      "tasks": {
+        "declared": 4000,
+        "succeeded": 4000,
+        "failed": 0,
+        "killed": 0,
+        "speculative": 0
+      },
+      "task_duration_ms": {
+        "min": 49,
+        "p50": 58,
+        "p75": 62,
+        "p95": 65,
+        "max": 66
+      },
+      "shuffle_read_per_task_bytes": {
+        "min": 0,
+        "p50": 0,
+        "p75": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "input_per_task_bytes": {
+        "min": 52433,
+        "p50": 65357,
+        "p75": 71866,
+        "p95": 77371,
+        "max": 78641
+      },
+      "totals": {
+        "executor_run_ms": 118119,
+        "cpu_ms": 100401,
+        "gc_ms": 0,
+        "gc_ratio": 0.0,
+        "deserialize_ms": 20000,
+        "input_bytes": 261786545,
+        "output_bytes": 0,
+        "shuffle_read_bytes": 0,
+        "shuffle_write_bytes": 0,
+        "fetch_wait_ms": 0,
+        "memory_spilled_bytes": 0,
+        "disk_spilled_bytes": 0,
+        "result_bytes": 8000000
+      },
+      "slowest_tasks": [
+        {
+          "task_id": 4571,
+          "index": 3971,
+          "attempt": 0,
+          "executor_id": "3",
+          "host": "worker-4.cluster.internal",
+          "duration_ms": 66,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 71124,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4570,
+          "index": 3970,
+          "attempt": 0,
+          "executor_id": "1",
+          "host": "worker-2.cluster.internal",
+          "duration_ms": 66,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 67128,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4552,
+          "index": 3952,
+          "attempt": 0,
+          "executor_id": "2",
+          "host": "worker-3.cluster.internal",
+          "duration_ms": 66,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 59670,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4541,
+          "index": 3941,
+          "attempt": 0,
+          "executor_id": "1",
+          "host": "worker-2.cluster.internal",
+          "duration_ms": 66,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 61792,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4486,
+          "index": 3886,
+          "attempt": 0,
+          "executor_id": "6",
+          "host": "worker-3.cluster.internal",
+          "duration_ms": 66,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 67560,
+          "disk_spilled_bytes": 0
+        }
+      ],
+      "failure_reasons": []
+    },
+    {
+      "key": "6.0",
+      "stage_id": 6,
+      "attempt_id": 0,
+      "name": "map side",
+      "details": "org.apache.spark.sql.Dataset.collect(Dataset.scala:3000)",
+      "status": "COMPLETE",
+      "job_ids": [
+        5
+      ],
+      "submitted_at": "2025-10-09T09:02:10.366+00:00",
+      "duration_ms": 4557,
+      "failure_reason": null,
+      "tasks": {
+        "declared": 60,
+        "succeeded": 60,
+        "failed": 0,
+        "killed": 0,
+        "speculative": 0
+      },
+      "task_duration_ms": {
+        "min": 1632,
+        "p50": 2038,
+        "p75": 2261,
+        "p95": 2375,
+        "max": 2384
+      },
+      "shuffle_read_per_task_bytes": {
+        "min": 0,
+        "p50": 0,
+        "p75": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "input_per_task_bytes": {
+        "min": 0,
+        "p50": 0,
+        "p75": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "totals": {
+        "executor_run_ms": 122510,
+        "cpu_ms": 104133,
+        "gc_ms": 0,
+        "gc_ratio": 0.0,
+        "deserialize_ms": 480,
+        "input_bytes": 0,
+        "output_bytes": 0,
+        "shuffle_read_bytes": 0,
+        "shuffle_write_bytes": 2035009552,
+        "fetch_wait_ms": 0,
+        "memory_spilled_bytes": 0,
+        "disk_spilled_bytes": 0,
+        "result_bytes": 120000
+      },
+      "slowest_tasks": [
+        {
+          "task_id": 4756,
+          "index": 31,
+          "attempt": 0,
+          "executor_id": "10",
+          "host": "worker-3.cluster.internal",
+          "duration_ms": 2384,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4752,
+          "index": 27,
+          "attempt": 0,
+          "executor_id": "9",
+          "host": "worker-2.cluster.internal",
+          "duration_ms": 2381,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4742,
+          "index": 17,
+          "attempt": 0,
+          "executor_id": "7",
+          "host": "worker-4.cluster.internal",
+          "duration_ms": 2375,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4733,
+          "index": 8,
+          "attempt": 0,
+          "executor_id": "5",
+          "host": "worker-2.cluster.internal",
+          "duration_ms": 2375,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4772,
+          "index": 47,
+          "attempt": 0,
+          "executor_id": "9",
+          "host": "worker-2.cluster.internal",
+          "duration_ms": 2348,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        }
+      ],
+      "failure_reasons": []
+    },
+    {
+      "key": "7.1",
+      "stage_id": 7,
+      "attempt_id": 1,
+      "name": "reduce side",
+      "details": "org.apache.spark.sql.Dataset.collect(Dataset.scala:3000)",
+      "status": "COMPLETE",
+      "job_ids": [],
+      "submitted_at": "2025-10-09T09:02:18.733+00:00",
+      "duration_ms": 4108,
+      "failure_reason": null,
+      "tasks": {
+        "declared": 60,
+        "succeeded": 60,
+        "failed": 0,
+        "killed": 0,
+        "speculative": 0
+      },
+      "task_duration_ms": {
+        "min": 1468,
+        "p50": 1898,
+        "p75": 1999,
+        "p95": 2153,
+        "max": 2176
+      },
+      "shuffle_read_per_task_bytes": {
+        "min": 27146325,
+        "p50": 35406796,
+        "p75": 38454800,
+        "p95": 39879505,
+        "max": 40137863
+      },
+      "input_per_task_bytes": {
+        "min": 0,
+        "p50": 0,
+        "p75": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "totals": {
+        "executor_run_ms": 111076,
+        "cpu_ms": 94414,
+        "gc_ms": 0,
+        "gc_ratio": 0.0,
+        "deserialize_ms": 480,
+        "input_bytes": 0,
+        "output_bytes": 0,
+        "shuffle_read_bytes": 2069242255,
+        "shuffle_write_bytes": 0,
+        "fetch_wait_ms": 0,
+        "memory_spilled_bytes": 0,
+        "disk_spilled_bytes": 0,
+        "result_bytes": 120000
+      },
+      "slowest_tasks": [
+        {
+          "task_id": 4873,
+          "index": 28,
+          "attempt": 0,
+          "executor_id": "10",
+          "host": "worker-3.cluster.internal",
+          "duration_ms": 2176,
+          "shuffle_read_bytes": 27435755,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4894,
+          "index": 49,
+          "attempt": 0,
+          "executor_id": "8",
+          "host": "worker-1.cluster.internal",
+          "duration_ms": 2166,
+          "shuffle_read_bytes": 28790380,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4853,
+          "index": 8,
+          "attempt": 0,
+          "executor_id": "5",
+          "host": "worker-2.cluster.internal",
+          "duration_ms": 2166,
+          "shuffle_read_bytes": 39118642,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4871,
+          "index": 26,
+          "attempt": 0,
+          "executor_id": "9",
+          "host": "worker-2.cluster.internal",
+          "duration_ms": 2152,
+          "shuffle_read_bytes": 29367775,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4888,
+          "index": 43,
+          "attempt": 0,
+          "executor_id": "4",
+          "host": "worker-1.cluster.internal",
+          "duration_ms": 2151,
+          "shuffle_read_bytes": 28003797,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        }
+      ],
+      "failure_reasons": []
+    },
+    {
+      "key": "7.0",
+      "stage_id": 7,
+      "attempt_id": 0,
+      "name": "reduce side",
+      "details": "org.apache.spark.sql.Dataset.collect(Dataset.scala:3000)",
+      "status": "FAILED",
+      "job_ids": [
+        5
+      ],
+      "submitted_at": "2025-10-09T09:02:14.923+00:00",
+      "duration_ms": 3810,
+      "failure_reason": "FetchFailed(BlockManagerId(2, worker-3, 7337), shuffleId=3)",
+      "tasks": {
+        "declared": 60,
+        "succeeded": 50,
+        "failed": 10,
+        "killed": 0,
+        "speculative": 0
+      },
+      "task_duration_ms": {
+        "min": 1464,
+        "p50": 1728,
+        "p75": 1892,
+        "p95": 2073,
+        "max": 2142
+      },
+      "shuffle_read_per_task_bytes": {
+        "min": 27159132,
+        "p50": 33076288,
+        "p75": 36424092,
+        "p95": 39011226,
+        "max": 39832260
+      },
+      "input_per_task_bytes": {
+        "min": 0,
+        "p50": 0,
+        "p75": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "totals": {
+        "executor_run_ms": 89641,
+        "cpu_ms": 76194,
+        "gc_ms": 0,
+        "gc_ratio": 0.0,
+        "deserialize_ms": 480,
+        "input_bytes": 0,
+        "output_bytes": 0,
+        "shuffle_read_bytes": 1656209589,
+        "shuffle_write_bytes": 0,
+        "fetch_wait_ms": 0,
+        "memory_spilled_bytes": 0,
+        "disk_spilled_bytes": 0,
+        "result_bytes": 120000
+      },
+      "slowest_tasks": [
+        {
+          "task_id": 4813,
+          "index": 28,
+          "attempt": 0,
+          "executor_id": "10",
+          "host": "worker-3.cluster.internal",
+          "duration_ms": 2142,
+          "shuffle_read_bytes": 39653566,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4830,
+          "index": 45,
+          "attempt": 0,
+          "executor_id": "3",
+          "host": "worker-4.cluster.internal",
+          "duration_ms": 2105,
+          "shuffle_read_bytes": 32113368,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4808,
+          "index": 23,
+          "attempt": 0,
+          "executor_id": "8",
+          "host": "worker-1.cluster.internal",
+          "duration_ms": 2084,
+          "shuffle_read_bytes": 29895605,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4828,
+          "index": 43,
+          "attempt": 0,
+          "executor_id": "6",
+          "host": "worker-3.cluster.internal",
+          "duration_ms": 2060,
+          "shuffle_read_bytes": 36965862,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4793,
+          "index": 8,
+          "attempt": 0,
+          "executor_id": "5",
+          "host": "worker-2.cluster.internal",
+          "duration_ms": 2006,
+          "shuffle_read_bytes": 35482080,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        }
+      ],
+      "failure_reasons": [
+        {
+          "reason": "FetchFailed",
+          "count": 10
+        }
+      ]
+    },
+    {
+      "key": "8.0",
+      "stage_id": 8,
+      "attempt_id": 0,
+      "name": "divide by zero",
+      "details": "org.apache.spark.sql.Dataset.collect(Dataset.scala:3000)",
+      "status": "FAILED",
+      "job_ids": [
+        6
+      ],
+      "submitted_at": "2025-10-09T09:02:26.793+00:00",
+      "duration_ms": 1593,
+      "failure_reason": "Job aborted due to stage failure: Task 3 in stage failed 4 times: java.lang.ArithmeticException: / by zero",
+      "tasks": {
+        "declared": 11,
+        "succeeded": 7,
+        "failed": 4,
+        "killed": 0,
+        "speculative": 0
+      },
+      "task_duration_ms": {
+        "min": 1344,
+        "p50": 1476,
+        "p75": 1539,
+        "p95": 1582,
+        "max": 1587
+      },
+      "shuffle_read_per_task_bytes": {
+        "min": 0,
+        "p50": 0,
+        "p75": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "input_per_task_bytes": {
+        "min": 0,
+        "p50": 0,
+        "p75": 0,
+        "p95": 0,
+        "max": 0
+      },
+      "totals": {
+        "executor_run_ms": 11002,
+        "cpu_ms": 9351,
+        "gc_ms": 0,
+        "gc_ratio": 0.0,
+        "deserialize_ms": 88,
+        "input_bytes": 0,
+        "output_bytes": 0,
+        "shuffle_read_bytes": 0,
+        "shuffle_write_bytes": 0,
+        "fetch_wait_ms": 0,
+        "memory_spilled_bytes": 0,
+        "disk_spilled_bytes": 0,
+        "result_bytes": 22000
+      },
+      "slowest_tasks": [
+        {
+          "task_id": 4911,
+          "index": 6,
+          "attempt": 0,
+          "executor_id": "4",
+          "host": "worker-1.cluster.internal",
+          "duration_ms": 1587,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4909,
+          "index": 4,
+          "attempt": 0,
+          "executor_id": "4",
+          "host": "worker-1.cluster.internal",
+          "duration_ms": 1572,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4910,
+          "index": 5,
+          "attempt": 0,
+          "executor_id": "4",
+          "host": "worker-1.cluster.internal",
+          "duration_ms": 1506,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4908,
+          "index": 3,
+          "attempt": 0,
+          "executor_id": "3",
+          "host": "worker-4.cluster.internal",
+          "duration_ms": 1476,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        },
+        {
+          "task_id": 4906,
+          "index": 1,
+          "attempt": 0,
+          "executor_id": "3",
+          "host": "worker-4.cluster.internal",
+          "duration_ms": 1451,
+          "shuffle_read_bytes": 0,
+          "input_bytes": 0,
+          "disk_spilled_bytes": 0
+        }
+      ],
+      "failure_reasons": [
+        {
+          "reason": "java.lang.ArithmeticException: / by zero",
+          "count": 4
+        }
+      ]
+    }
+  ],
+  "stages_truncated": 0,
+  "executors": [
+    {
+      "id": "1",
+      "host": "worker-2.cluster.internal",
+      "cores": 4,
+      "added_at": "2025-10-09T08:53:24.000+00:00",
+      "removed_at": "2025-10-09T09:02:07.787+00:00",
+      "removed_reason": "Container killed by YARN for exceeding memory limits. 8.4 GB of 8 GB physical memory used. Consider boosting spark.executor.memoryOverhead.",
+      "lifetime_ms": 523787,
+      "tasks": {
+        "succeeded": 576,
+        "failed": 6,
+        "killed": 0
+      },
+      "run_ms": 855875,
+      "gc_ms": 119855,
+      "gc_ratio": 0.14,
+      "input_bytes": 9082123623,
+      "shuffle_read_bytes": 8266368786,
+      "shuffle_write_bytes": 1558466800,
+      "disk_spilled_bytes": 2202009600
+    },
+    {
+      "id": "3",
+      "host": "worker-4.cluster.internal",
+      "cores": 4,
+      "added_at": "2025-10-09T08:53:24.000+00:00",
+      "removed_at": null,
+      "removed_reason": null,
+      "lifetime_ms": 549462,
+      "tasks": {
+        "succeeded": 611,
+        "failed": 2,
+        "killed": 0
+      },
+      "run_ms": 535262,
+      "gc_ms": 64286,
+      "gc_ratio": 0.1201,
+      "input_bytes": 6437905898,
+      "shuffle_read_bytes": 2284092214,
+      "shuffle_write_bytes": 1858428587,
+      "disk_spilled_bytes": 0
+    },
+    {
+      "id": "8",
+      "host": "worker-1.cluster.internal",
+      "cores": 4,
+      "added_at": "2025-10-09T08:53:24.000+00:00",
+      "removed_at": null,
+      "removed_reason": null,
+      "lifetime_ms": 549462,
+      "tasks": {
+        "succeeded": 619,
+        "failed": 1,
+        "killed": 0
+      },
+      "run_ms": 478850,
+      "gc_ms": 50184,
+      "gc_ratio": 0.1048,
+      "input_bytes": 7770641087,
+      "shuffle_read_bytes": 2195180167,
+      "shuffle_write_bytes": 2051939438,
+      "disk_spilled_bytes": 0
+    },
+    {
+      "id": "4",
+      "host": "worker-1.cluster.internal",
+      "cores": 4,
+      "added_at": "2025-10-09T08:53:24.000+00:00",
+      "removed_at": null,
+      "removed_reason": null,
+      "lifetime_ms": 549462,
+      "tasks": {
+        "succeeded": 618,
+        "failed": 2,
+        "killed": 0
+      },
+      "run_ms": 468601,
+      "gc_ms": 47603,
+      "gc_ratio": 0.1016,
+      "input_bytes": 7281539289,
+      "shuffle_read_bytes": 2241913209,
+      "shuffle_write_bytes": 1860364710,
+      "disk_spilled_bytes": 0
+    },
+    {
+      "id": "5",
+      "host": "worker-2.cluster.internal",
+      "cores": 4,
+      "added_at": "2025-10-09T08:53:24.000+00:00",
+      "removed_at": null,
+      "removed_reason": null,
+      "lifetime_ms": 549462,
+      "tasks": {
+        "succeeded": 613,
+        "failed": 3,
+        "killed": 0
+      },
+      "run_ms": 467215,
+      "gc_ms": 49415,
+      "gc_ratio": 0.1058,
+      "input_bytes": 7535535601,
+      "shuffle_read_bytes": 2195375979,
+      "shuffle_write_bytes": 1935060568,
+      "disk_spilled_bytes": 0
+    },
+    {
+      "id": "7",
+      "host": "worker-4.cluster.internal",
+      "cores": 4,
+      "added_at": "2025-10-09T08:53:24.000+00:00",
+      "removed_at": null,
+      "removed_reason": null,
+      "lifetime_ms": 549462,
+      "tasks": {
+        "succeeded": 609,
+        "failed": 2,
+        "killed": 0
+      },
+      "run_ms": 464829,
+      "gc_ms": 49433,
+      "gc_ratio": 0.1063,
+      "input_bytes": 7550091008,
+      "shuffle_read_bytes": 2039546256,
+      "shuffle_write_bytes": 1947728747,
+      "disk_spilled_bytes": 0
+    },
+    {
+      "id": "6",
+      "host": "worker-3.cluster.internal",
+      "cores": 4,
+      "added_at": "2025-10-09T08:53:24.000+00:00",
+      "removed_at": null,
+      "removed_reason": null,
+      "lifetime_ms": 549462,
+      "tasks": {
+        "succeeded": 612,
+        "failed": 1,
+        "killed": 0
+      },
+      "run_ms": 458361,
+      "gc_ms": 47797,
+      "gc_ratio": 0.1043,
+      "input_bytes": 7355209401,
+      "shuffle_read_bytes": 2258705610,
+      "shuffle_write_bytes": 1988598094,
+      "disk_spilled_bytes": 0
+    },
+    {
+      "id": "2",
+      "host": "worker-3.cluster.internal",
+      "cores": 4,
+      "added_at": "2025-10-09T08:53:24.000+00:00",
+      "removed_at": "2025-10-09T09:02:07.787+00:00",
+      "removed_reason": "Container killed by YARN for exceeding memory limits. 8.4 GB of 8 GB physical memory used. Consider boosting spark.executor.memoryOverhead.",
+      "lifetime_ms": 523787,
+      "tasks": {
+        "succeeded": 592,
+        "failed": 6,
+        "killed": 0
+      },
+      "run_ms": 448386,
+      "gc_ms": 50009,
+      "gc_ratio": 0.1115,
+      "input_bytes": 8227319588,
+      "shuffle_read_bytes": 1735167764,
+      "shuffle_write_bytes": 1841391014,
+      "disk_spilled_bytes": 0
+    },
+    {
+      "id": "9",
+      "host": "worker-2.cluster.internal",
+      "cores": 4,
+      "added_at": "2025-10-09T09:02:07.787+00:00",
+      "removed_at": null,
+      "removed_reason": null,
+      "lifetime_ms": 25675,
+      "tasks": {
+        "succeeded": 21,
+        "failed": 1,
+        "killed": 0
+      },
+      "run_ms": 39951,
+      "gc_ms": 0,
+      "gc_ratio": 0.0,
+      "input_bytes": 0,
+      "shuffle_read_bytes": 480620199,
+      "shuffle_write_bytes": 251805807,
+      "disk_spilled_bytes": 0
+    },
+    {
+      "id": "10",
+      "host": "worker-3.cluster.internal",
+      "cores": 4,
+      "added_at": "2025-10-09T09:02:07.787+00:00",
+      "removed_at": null,
+      "removed_reason": null,
+      "lifetime_ms": 25675,
+      "tasks": {
+        "succeeded": 19,
+        "failed": 2,
+        "killed": 0
+      },
+      "run_ms": 37900,
+      "gc_ms": 0,
+      "gc_ratio": 0.0,
+      "input_bytes": 0,
+      "shuffle_read_bytes": 410633697,
+      "shuffle_write_bytes": 224582373,
+      "disk_spilled_bytes": 0
+    }
+  ],
+  "sql_executions": [
+    {
+      "execution_id": 0,
+      "description": "orders JOIN customers (skewed on customer_id)",
+      "duration_ms": 79673,
+      "job_ids": [
+        0
+      ]
+    },
+    {
+      "execution_id": 1,
+      "description": "sessionization with large object graphs",
+      "duration_ms": 73943,
+      "job_ids": [
+        1
+      ]
+    },
+    {
+      "execution_id": 3,
+      "description": "feature extraction",
+      "duration_ms": 21584,
+      "job_ids": [
+        4
+      ]
+    },
+    {
+      "execution_id": 4,
+      "description": "rollup after executor loss",
+      "duration_ms": 12480,
+      "job_ids": [
+        5
+      ]
+    },
+    {
+      "execution_id": 2,
+      "description": "tiny file compaction check",
+      "duration_ms": 7674,
+      "job_ids": [
+        2
+      ]
+    }
+  ],
+  "spark_properties": {
+    "spark.master": "yarn",
+    "spark.submit.deployMode": "cluster",
+    "spark.executor.instances": "8",
+    "spark.executor.cores": "4",
+    "spark.executor.memory": "8g",
+    "spark.driver.memory": "4g",
+    "spark.dynamicAllocation.enabled": "false",
+    "spark.sql.shuffle.partitions": "200",
+    "spark.sql.adaptive.enabled": "false"
+  },
+  "parse": {
+    "files": 1,
+    "lines": 4976,
+    "events_processed": 4976,
+    "events_skipped": 0,
+    "bad_lines": 0
+  }
+}

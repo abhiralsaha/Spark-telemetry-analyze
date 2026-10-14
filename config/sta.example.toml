@@ -1,0 +1,54 @@
+# Spark Telemetry Analyzer - example configuration.
+# Every key is optional; the values below are the built-in defaults.
+# Use with:  sta analyze LOG -c config/sta.example.toml     (or export STA_CONFIG=/path/to/file)
+
+[analysis]
+disabled_rules = []        # e.g. ["CONFIG_ADVISORY", "HEAVY_SHUFFLE"]; see `sta rules`
+reservoir_size = 20000     # per-stage sample size used to estimate task percentiles
+top_n = 10                 # rows in "top N" tables
+max_listed_stages = 200    # stages embedded in the JSON report
+redact_properties = true   # redact secrets in Spark properties
+
+[thresholds]
+# general
+min_stage_duration_ms = 5000
+min_run_ms_for_ratios = 10000
+# skew / stragglers
+min_tasks_for_skew = 8
+skew_duration_ratio_warn = 4.0     # slowest task / median task
+skew_duration_ratio_crit = 10.0
+skew_min_max_task_ms = 10000
+skew_data_ratio_warn = 5.0         # largest task input / median
+skew_data_ratio_crit = 20.0
+skew_min_bytes = 67108864          # 64 MiB
+# spill
+spill_disk_warn_bytes = 536870912        # 512 MiB
+spill_disk_crit_bytes = 10737418240      # 10 GiB
+spill_memory_warn_bytes = 2147483648     # 2 GiB
+# GC / serialization
+gc_ratio_warn = 0.10
+gc_ratio_crit = 0.20
+deserialize_ratio_warn = 0.20
+deserialize_ratio_crit = 0.40
+# failures
+failed_task_ratio_warn = 0.01
+failed_task_ratio_crit = 0.05
+# partitioning / parallelism
+small_task_median_ms = 100
+small_task_min_count = 1000
+scheduling_overhead_ratio_warn = 0.30
+scheduling_overhead_min_tasks = 100
+low_parallelism_min_stage_ms = 30000
+large_partition_warn_bytes = 1073741824  # 1 GiB
+large_partition_crit_bytes = 4294967296  # 4 GiB
+# shuffle / driver
+fetch_wait_ratio_warn = 0.15
+heavy_shuffle_bytes = 53687091200        # 50 GiB
+large_result_warn_bytes = 1073741824
+large_result_crit_bytes = 4294967296
+# executors / cluster
+executor_imbalance_ratio_warn = 3.0
+executor_imbalance_min_executors = 4
+utilization_warn = 0.30
+utilization_crit = 0.10
+utilization_min_app_ms = 300000

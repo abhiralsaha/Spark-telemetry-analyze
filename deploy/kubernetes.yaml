@@ -1,0 +1,36 @@
+# Minimal Deployment + Service. Mount your event-log location (PVC, NFS or a bucket FUSE mount) at /data/eventlogs.
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: spark-telemetry-analyzer, labels: {app: spark-telemetry-analyzer}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: spark-telemetry-analyzer}}
+  template:
+    metadata:
+      labels: {app: spark-telemetry-analyzer}
+      annotations: {prometheus.io/scrape: "true", prometheus.io/port: "8080", prometheus.io/path: /metrics}
+    spec:
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: analyzer
+          image: spark-telemetry-analyzer:1.0.0
+          args: ["serve", "--host", "0.0.0.0", "--watch-dir", "/data/eventlogs"]
+          ports: [{containerPort: 8080, name: http}]
+          env:
+            - name: STA_TOKEN
+              valueFrom: {secretKeyRef: {name: sta-token, key: token}}
+          livenessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 20}
+          readinessProbe: {httpGet: {path: /readyz, port: http}, periodSeconds: 10}
+          resources: {requests: {cpu: 100m, memory: 256Mi}, limits: {memory: 1Gi}}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          volumeMounts: [{name: eventlogs, mountPath: /data/eventlogs, readOnly: true}]
+      volumes:
+        - name: eventlogs
+          persistentVolumeClaim: {claimName: spark-eventlogs}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: spark-telemetry-analyzer}
+spec:
+  selector: {app: spark-telemetry-analyzer}
+  ports: [{port: 80, targetPort: http, name: http}]

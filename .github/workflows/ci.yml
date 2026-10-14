@@ -1,0 +1,24 @@
+name: CI
+on:
+  push: {branches: [main]}
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: {python-version: ["3.11", "3.12", "3.13"]}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "${{ matrix.python-version }}"}
+      - run: pip install -e ".[dev,zstd,lz4]"
+      - run: ruff check src tests
+      - run: mypy src
+      - run: pytest --cov=spark_telemetry_analyzer
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t sta:ci .
+      - run: docker run --rm sta:ci --version

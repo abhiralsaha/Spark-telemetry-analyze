@@ -1,0 +1,22 @@
+# Analyzer service watching ./eventlogs, scraped by Prometheus.
+#   docker compose up --build
+#   cp examples/sample_mixed.json eventlogs/      # analyzed automatically
+#   open http://localhost:8080/api/v1/reports  and  http://localhost:9090
+services:
+  analyzer:
+    build: .
+    ports: ["8080:8080"]
+    environment:
+      STA_TOKEN: "${STA_TOKEN:-change-me}"   # bearer token for /api/*
+    volumes:
+      - ./eventlogs:/data/eventlogs:ro
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+  prometheus:
+    image: prom/prometheus:latest
+    ports: ["9090:9090"]
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on: [analyzer]

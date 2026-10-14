@@ -1,0 +1,17 @@
+groups:
+  - name: spark-telemetry
+    rules:
+      - alert: SparkAppUnhealthy
+        expr: sta_app_health_score < 60
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Spark app {{ $labels.app_name }} health score is {{ $value }}"
+      - alert: SparkAppCriticalFindings
+        expr: sum by (app_id, app_name) (sta_findings{severity="critical"}) > 0
+        labels: {severity: critical}
+        annotations:
+          summary: "Critical findings in {{ $labels.app_name }} ({{ $labels.app_id }})"
+      - alert: SparkLowUtilization
+        expr: sta_app_utilization_ratio < 0.3 and sta_app_duration_seconds > 300
+        labels: {severity: info}
